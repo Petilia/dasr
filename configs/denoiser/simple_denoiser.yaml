@@ -1,0 +1,13 @@
+_target_: dasr.models.naive_model.SimpleModel
+chin: 1
+chout: 1 
+depth: 3
+kernel_size: 8
+stride: 4
+hidden: 48
+growth: 2
+max_hidden: 4096
+normalize: True
+resample: 1
+floor: 1e-3 
+sample_rate: 16_000

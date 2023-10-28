@@ -1,0 +1,60 @@
+defaults:
+  - denoiser: simple_denoiser_lstm
+
+# defaults:
+#   - denoiser: simple_denoiser
+
+asr: 
+  _target_: dasr.asr.whisper.WhisperEnv
+  device: "cuda"
+  path_model: "/home/docker_current/hf_whisper/whisper-base"
+  asr_metric: "cer"
+  baseline: 0.7
+
+data:
+  _target_: dasr.datasets.make_dataloaders.make_loaders
+  common_voice:
+    _target_: dasr.datasets.common_voice.get_common_voice
+    name: "mozilla-foundation/common_voice_11_0"
+    language: "ru"
+    train_split: "train[0:3000]"
+    test_split: "test[0:200]"
+    removavle_cols: ["accent", "age", "client_id", "down_votes", "gender", "locale", "path", "segment", "up_votes"]
+    sampling_rate: 16000
+  batch_size: 5
+  desire_snr_db: 10
+  max_length: False
+
+train:
+  optimizer:
+    _target_: dasr.optimizers.lion.Lion
+    # _target_: torch.optim.Adam
+    # _target_: torch.optim.SGD
+    lr: 0.0001
+  trainer: 
+    _target_: dasr.train.trainer.Trainer
+  n_epoch: 200
+  n_epoch_before_asr_loss: 20000
+  only_asr_loss: False
+  asr_loss_coef: 0.2
+   
+loss: 
+  _target_: dasr.losses.loss_factory.AdditiveLoss
+  criteria: "l1"
+  use_sfft_loss: True
+  factor_sc: 0.5
+  factor_mag: 0.5
+
+wandb:
+  _target_: dasr.logger.wandb_logger.WandbLogger
+  project_name: "dasr"
+  # run_name: "SNR=10, train[0:3000], baseline=0.7, RL after 20 epoch, simple_denoiser_lstm"
+  run_name: "SNR=10, train[0:3000], baseline=0.7, without RL, simple_denoiser_lstm"
+  # run_name: "SNR=10, train[0:3000], baseline=0.7, RL after 20 epoch, asr_loss_coef=0.2, simple_denoiser_lstm"
+  
+
+# Some magical params from facebook denoiser
+facebook_denoiser:
+  segment: 4
+
+device: "cuda"

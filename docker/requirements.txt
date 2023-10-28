@@ -1,0 +1,16 @@
+#original whisper req
+numpy
+torch===1.11.0
+torchaudio==0.11.0 
+torchvision==0.12.0
+tqdm
+more-itertools
+transformers>=4.19.0
+ffmpeg-python==0.2.0
+
+#req from fine-tuning manual
+datasets>=2.6.1
+librosa
+evaluate>=0.3.0
+jiwer
+gradio

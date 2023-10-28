@@ -1,0 +1,12 @@
+data:
+  _target_: dasr.datasets.random_noise.make_loaders
+  common_voice:
+    _target_: dasr.datasets.common_voice.get_common_voice
+    name: "mozilla-foundation/common_voice_11_0"
+    language: "ru"
+    train_split: "train[0:3000]"
+    test_split: "test[0:500]"
+    removavle_cols: ["accent", "age", "client_id", "down_votes", "gender", "locale", "path", "segment", "up_votes"]
+    sampling_rate: 16000
+  batch_size: 16
+  length: ???
