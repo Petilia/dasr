@@ -4,12 +4,19 @@ defaults:
 # defaults:
 #   - denoiser: simple_denoiser
 
+# asr: 
+#   _target_: dasr.asr.whisper.WhisperEnv
+#   device: "cuda"
+#   path_model: "/home/docker_current/hf_whisper/whisper-base"
+#   asr_metric: "cer"
+#   baseline: 0.7
+
 asr: 
-  _target_: dasr.asr.whisper.WhisperEnv
+  _target_: dasr.asr.wav2vec.Wav2VecEnv
   device: "cuda"
-  path_model: "/home/docker_current/hf_whisper/whisper-base"
+  path_model: "jonatasgrosman/wav2vec2-large-xlsr-53-russian"
   asr_metric: "cer"
-  baseline: 0.7
+  baseline: 1.1
 
 data:
   _target_: dasr.datasets.make_dataloaders.make_loaders
@@ -17,11 +24,11 @@ data:
     _target_: dasr.datasets.common_voice.get_common_voice
     name: "mozilla-foundation/common_voice_11_0"
     language: "ru"
-    train_split: "train[0:3000]"
+    train_split: "train[0:300]"
     test_split: "test[0:200]"
     removavle_cols: ["accent", "age", "client_id", "down_votes", "gender", "locale", "path", "segment", "up_votes"]
     sampling_rate: 16000
-  batch_size: 5
+  batch_size: 2
   desire_snr_db: 10
   max_length: False
 
@@ -33,8 +40,8 @@ train:
     lr: 0.0001
   trainer: 
     _target_: dasr.train.trainer.Trainer
-  n_epoch: 200
-  n_epoch_before_asr_loss: 20000
+  n_epoch: 400
+  n_epoch_before_asr_loss: 50
   only_asr_loss: False
   asr_loss_coef: 0.2
    
@@ -49,7 +56,7 @@ wandb:
   _target_: dasr.logger.wandb_logger.WandbLogger
   project_name: "dasr"
   # run_name: "SNR=10, train[0:3000], baseline=0.7, RL after 20 epoch, simple_denoiser_lstm"
-  run_name: "SNR=10, train[0:3000], baseline=0.7, without RL, simple_denoiser_lstm"
+  run_name: "wav2vec, without mask, SNR=10, train[0:300], baseline=1.1, RL after 50 epoch, simple_denoiser_lstm"
   # run_name: "SNR=10, train[0:3000], baseline=0.7, RL after 20 epoch, asr_loss_coef=0.2, simple_denoiser_lstm"
   
 

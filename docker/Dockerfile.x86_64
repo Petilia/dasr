@@ -40,6 +40,8 @@ RUN pip install jiwer evaluate soundfile librosa
 
 RUN pip install transformers==4.24.0
 
+RUN pip install torchmetrics
+
 #### ADD USER WITH DEFAULT PW
 ARG USER=docker_current
 ARG UID=1000

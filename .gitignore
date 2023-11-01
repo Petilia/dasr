@@ -156,3 +156,4 @@ cython_debug/
 checkpoints
 outputs
 wandb
+dasr_old

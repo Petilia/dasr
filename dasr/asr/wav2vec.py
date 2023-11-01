@@ -1,41 +1,54 @@
 import re
-from types import MethodType
 
 import torch
 import torch.nn.functional as F
 from evaluate import load
-from transformers import WhisperForConditionalGeneration, WhisperProcessor
-from undecorated import undecorated
-
-from .whisper_utils import log_mel_spectrogram, pad_or_trim
+from torchmetrics.text import CharErrorRate, WordErrorRate
+from transformers import Wav2Vec2ForCTC, Wav2Vec2Processor
 
 
-class WhisperEnv:
+class TruncatedWER(WordErrorRate):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, preds, target, trunc_threshold=1):
+        orig_wer = super().__call__(preds, target)
+        trunc_wer = orig_wer if orig_wer != float("inf") else trunc_threshold
+        return trunc_wer
+
+
+class TruncatedCER(CharErrorRate):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def __call__(self, preds, target, trunc_threshold=1):
+        orig_cer = super().__call__(preds, target)
+        trunc_cer = orig_cer if orig_cer != float("inf") else trunc_threshold
+        return trunc_cer
+
+
+class Wav2VecEnv:
     def __init__(
         self,
         device="cuda",
-        path_model="/home/docker_current/hf_whisper/whisper-base",
+        path_model="jonatasgrosman/wav2vec2-large-xlsr-53-russian",
         asr_metric="wer",
         baseline=False,
     ):
         self.device = device
-        self.model = WhisperForConditionalGeneration.from_pretrained(path_model)
-        self.processor = WhisperProcessor.from_pretrained(
-            path_model, language="ru", task="transcribe"
-        )
-        self.model.config.forced_decoder_ids = self.processor.get_decoder_prompt_ids(
-            language="ru", task="transcribe"
-        )
+        self.processor = Wav2Vec2Processor.from_pretrained(path_model)
+        self.model = Wav2Vec2ForCTC.from_pretrained(path_model)
 
-        # add method for generate with gradients
-        generate_with_grad = undecorated(self.model.generate)
-        self.model.generate_with_grad = MethodType(generate_with_grad, self.model)
         self.model = self.model.to(device)
         self.model.eval()
         self.freeze_model()
 
-        self.wer = load("wer")
-        self.cer = load("cer")
+        # self.wer = load("wer")
+        # self.cer = load("cer")
+
+        self.wer = TruncatedWER()
+        self.cer = TruncatedCER()
+
         if asr_metric == "wer":
             self.asr_metric = self.wer
         elif asr_metric == "cer":
@@ -46,42 +59,29 @@ class WhisperEnv:
         for param in self.model.parameters():
             param.requires_grad = False
 
-    def get_melspec(self, speech):
-        speech = self.to_tensor(speech)
-        speech = speech.to(self.device)
-        speech = pad_or_trim(speech)
-        orig_whisper_feat = log_mel_spectrogram(speech)
-        return orig_whisper_feat
+    def inference_with_grad(self, speech, attention_mask=None):
+        output = self.model(speech, attention_mask=attention_mask)
+        tokens_logits = output.logits
+        predicted_ids = torch.argmax(tokens_logits, dim=-1)
+        pred_texts = self.processor.batch_decode(predicted_ids)
+        logprobs = tokens_logits.softmax(dim=2).max(dim=2).values.log().sum(dim=1)
+        return pred_texts, logprobs
 
-    def inference_with_grad(self, speech):
-        mel_features = self.get_melspec(speech)
-        output = self.model.generate_with_grad(
-            mel_features,
-            return_dict_in_generate=True,
-            output_scores=True,
-            max_length=50,
-        )
-        predicted_ids = output[0]
-        pred_text = self.processor.batch_decode(predicted_ids, skip_special_tokens=True)
-        pred_text = [self.normalize_text(i) for i in pred_text]
-        tokens_logits = output[1]
-        logprob = sum(
-            [F.softmax(logits, dim=1).max(dim=1)[0].log() for logits in tokens_logits]
-        )
-        return pred_text, logprob
+    def inference_without_grad(self, speech, attention_mask=None):
+        with torch.no_grad():
+            output = self.model(speech, attention_mask=attention_mask)
 
-    def inference_without_grad(self, speech):
-        mel_features = self.get_melspec(speech)
-        output = self.model.generate(mel_features, max_length=50)
-        pred_text = self.processor.batch_decode(output, skip_special_tokens=True)
-        pred_text = [self.normalize_text(i) for i in pred_text]
-        return pred_text
+        tokens_logits = output.logits
+        predicted_ids = torch.argmax(tokens_logits, dim=-1)
+        pred_texts = self.processor.batch_decode(predicted_ids)
+
+        return pred_texts
 
     def get_loss(self, speech, denoisy_speech, noisy_speech=None, gt_transcript=None):
         reference_transcript = self.inference_without_grad(speech)
         denoisy_transcript, logprob = self.inference_with_grad(denoisy_speech)
         reward = [
-            -self.asr_metric.compute(predictions=[p], references=[r])
+            -self.asr_metric(preds=[p], target=[r])
             for p, r in zip(denoisy_transcript, reference_transcript)
         ]
         if self.baseline:
@@ -110,7 +110,7 @@ class WhisperEnv:
         with torch.no_grad():
             denoisy_transcript, logprob = self.inference_with_grad(denoisy_speech)
         reward = [
-            -self.asr_metric.compute(predictions=[p], references=[r])
+            -self.asr_metric(preds=[p], target=[r])
             for p, r in zip(denoisy_transcript, reference_transcript)
         ]
         if self.baseline:
@@ -151,36 +151,36 @@ class WhisperEnv:
         if gt_transcript:
             gt_transcript = [self.normalize_text(i) for i in gt_transcript]
         # metrics between reference and denoisy transcript (reference = clean audio through asr)
-        stats["wer (ref-denoisy)"] = self.wer.compute(
-            references=reference_transcript, predictions=denoisy_transcript
-        )
-        stats["cer (ref-denoisy)"] = self.cer.compute(
-            references=reference_transcript, predictions=denoisy_transcript
-        )
+        stats["wer (ref-denoisy)"] = self.wer(
+            target=reference_transcript, preds=denoisy_transcript
+        ).item()
+        stats["cer (ref-denoisy)"] = self.cer(
+            target=reference_transcript, preds=denoisy_transcript
+        ).item()
         # metrics between GT and reference
         if gt_transcript:
-            stats["wer (gt-ref)"] = self.wer.compute(
-                references=gt_transcript, predictions=reference_transcript
-            )
-            stats["cer (gt-ref)"] = self.cer.compute(
-                references=gt_transcript, predictions=reference_transcript
-            )
+            stats["wer (gt-ref)"] = self.wer(
+                target=gt_transcript, preds=reference_transcript
+            ).item()
+            stats["cer (gt-ref)"] = self.cer(
+                target=gt_transcript, preds=reference_transcript
+            ).item()
         # metrics between GT and deniosy
         if gt_transcript:
-            stats["wer (gt-denoisy)"] = self.wer.compute(
-                references=gt_transcript, predictions=denoisy_transcript
-            )
-            stats["cer (gt-denoisy)"] = self.cer.compute(
-                references=gt_transcript, predictions=denoisy_transcript
-            )
+            stats["wer (gt-denoisy)"] = self.wer(
+                target=gt_transcript, preds=denoisy_transcript
+            ).item()
+            stats["cer (gt-denoisy)"] = self.cer(
+                target=gt_transcript, preds=denoisy_transcript
+            ).item()
         # metrics between GT and noisy transcript (without denoising)
         if gt_transcript and noisy_transcript:
-            stats["wer (gt-noisy)"] = self.wer.compute(
-                references=gt_transcript, predictions=noisy_transcript
-            )
-            stats["cer (gt-noisy)"] = self.cer.compute(
-                references=gt_transcript, predictions=noisy_transcript
-            )
+            stats["wer (gt-noisy)"] = self.wer(
+                target=gt_transcript, preds=noisy_transcript
+            ).item()
+            stats["cer (gt-noisy)"] = self.cer(
+                target=gt_transcript, preds=noisy_transcript
+            ).item()
 
         return stats
 
