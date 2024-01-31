@@ -1,0 +1,5 @@
+_target_: dasr.models.facebook_denoiser.get_pretrained_model
+name: "dns64"
+freeze_encoder: False
+freeze_lstm: False
+freeze_decoder: False

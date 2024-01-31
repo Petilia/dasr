@@ -18,9 +18,13 @@ RUN python -m pip install --upgrade --force pip
 #                 torchaudio \
             
 
-RUN pip install torch===1.11.0 \
-                torchvision==0.12.0 \
-                torchaudio==0.11.0  
+# RUN pip install torch===1.11.0 \
+#                 torchvision==0.12.0 \
+#                 torchaudio==0.11.0  
+
+RUN pip install torch==1.13.1 \
+                torchvision==0.14.1 \
+                torchaudio==0.13.1 
                 
 RUN pip install opencv-python 
 
@@ -41,6 +45,9 @@ RUN pip install jiwer evaluate soundfile librosa
 RUN pip install transformers==4.24.0
 
 RUN pip install torchmetrics
+
+RUN apt-get update && apt-get install -y tmux zsh
+
 
 #### ADD USER WITH DEFAULT PW
 ARG USER=docker_current

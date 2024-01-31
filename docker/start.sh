@@ -18,11 +18,13 @@ desktop_start() {
         -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
         -v $workspace_dir/../:/home/docker_current/dasr:rw \
         -v /media/doctor/Elements/hf_whisper:/home/docker_current/hf_whisper:rw \
-        -v /media/doctor/Elements/train_audio_models_hf_cache:/home/docker_current/.cache/huggingface:rw \
+        -v /media/doctor/Elements/train_audio_models_hf_cache:/home/docker_current/.cache:rw \
         ${ARCH}/denoising_asr:latest
     xhost -
 }
 
+
+# -v /media/doctor/Elements/train_audio_models_hf_cache:/home/docker_current/.cache/huggingface:rw \
 
 
 

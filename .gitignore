@@ -157,3 +157,4 @@ checkpoints
 outputs
 wandb
 dasr_old
+singularity-ce-3.8.1

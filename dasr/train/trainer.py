@@ -60,12 +60,19 @@ class Trainer:
             gt_transcript = batch["transcriptions"]
             clear = batch["clean_audios"].to(self.device)
             noisy = batch["noise_audios"].to(self.device)
+            # attention_mask = batch["noise_attention_masks"].to(self.device)
+            attention_mask = None
+
             output = self.model(noisy)
             output = output.squeeze(1)
 
             if self.epoch >= self.n_epoch_before_asr_loss:
                 asr_loss, asr_loss_stats = self.asr.get_loss(
-                    clear, output, noisy_speech=noisy, gt_transcript=gt_transcript
+                    clear,
+                    output,
+                    noisy_speech=noisy,
+                    gt_transcript=gt_transcript,
+                    attention_mask=attention_mask,
                 )
                 if not self.only_asr_loss:
                     asr_loss *= self.asr_loss_coef
@@ -83,6 +90,7 @@ class Trainer:
             self.optimizer.step()
 
             if i % n_ep_it_loss == n_ep_it_loss - 1:
+                # if True:
                 stats = sum_list_dicts(stats)
                 if self.epoch >= self.n_epoch_before_asr_loss:
                     asr_stats = sum_list_dicts(asr_stats)
@@ -105,13 +113,21 @@ class Trainer:
             gt_transcript = batch["transcriptions"]
             clear = batch["clean_audios"].to(self.device)
             noisy = batch["noise_audios"].to(self.device)
+            # attention_mask = batch["noise_attention_masks"].to(self.device)
+            attention_mask = None
+
             with torch.no_grad():
                 output = self.model(noisy)
 
             output = output.squeeze(1)
             _, loss_stats = self.add_loss(clear, output)
+
             asr_loss_stats = self.asr.eval(
-                clear, output, noisy_speech=noisy, gt_transcript=gt_transcript
+                clear,
+                output,
+                attention_mask=attention_mask,
+                noisy_speech=noisy,
+                gt_transcript=gt_transcript,
             )
             # print(asr_loss_stats)
 
@@ -133,13 +149,19 @@ class Trainer:
         gt_transcript = batch["transcriptions"]
         clear = batch["clean_audios"].to(self.device)
         noisy = batch["noise_audios"].to(self.device)
+        # attention_mask = batch["noise_attention_masks"].to(self.device)
+        attention_mask = None
 
         with torch.no_grad():
             output = self.model(noisy)
 
         output = output.squeeze(1)
         asr_loss_stats = self.asr.eval(
-            clear, output, noisy_speech=noisy, gt_transcript=gt_transcript
+            clear,
+            output,
+            attention_mask=attention_mask,
+            noisy_speech=noisy,
+            gt_transcript=gt_transcript,
         )
         return asr_loss_stats
 
@@ -150,11 +172,11 @@ class Trainer:
             torch.cuda.empty_cache()
             eval_stats = self.eval_epoch()
             torch.cuda.empty_cache()
-            if eval_stats[f"{self.asr_metric} (ref-denoisy)"] < best_val_metric:
-                best_val_metric = eval_stats[f"{self.asr_metric} (ref-denoisy)"]
+            if eval_stats[f"{self.asr_metric} (gt-denoisy)"] < best_val_metric:
+                best_val_metric = eval_stats[f"{self.asr_metric} (gt-denoisy)"]
                 self.save_weights(best=best_val_metric)
-            else:
-                self.save_weights()
+            # else:
+            # self.save_weights()
             self.epoch += 1
 
     def save_weights(self, best=False):

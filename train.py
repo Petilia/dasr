@@ -11,6 +11,7 @@ os.environ["NUMBA_CACHE_DIR"] = "/tmp/"
 
 @hydra.main(version_base=None, config_path="configs", config_name="config")
 def main(cfg: DictConfig):
+    print(cfg)
     trainer = Trainer(cfg)
     trainer.train()
 
