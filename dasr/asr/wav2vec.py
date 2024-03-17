@@ -13,7 +13,7 @@ class Wav2VecEnv(BaseASRModel):
         self,
         device="cuda",
         path_model="jonatasgrosman/wav2vec2-large-xlsr-53-russian",
-        loss_type="reinforce",
+        loss_type="ctc",
         asr_metric="wer",
         baseline=False,
     ):
@@ -123,6 +123,7 @@ class Wav2VecEnv(BaseASRModel):
             noisy_transcript,
             gt_transcript,
         )
+
         return loss, stats
 
     def eval(

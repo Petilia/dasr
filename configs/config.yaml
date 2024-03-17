@@ -1,25 +1,15 @@
-# defaults:
-#   - denoiser: pretrained_facebook
-
-# defaults:
-#   - denoiser: simple_denoiser_lstm
-
-# defaults:
-#   - denoiser: simple_denoiser
-
-# asr: 
-#   _target_: dasr.asr.whisper.WhisperEnv
-#   device: "cuda"
-#   path_model: "/home/docker_current/hf_whisper/whisper-base"
-#   asr_metric: "cer"
-#   baseline: 0.7
-
 denoiser:
   _target_: dasr.models.facebook_denoiser.get_pretrained_model
   name: "dns64"
   freeze_encoder: True
   freeze_lstm: False
   freeze_decoder: False
+
+# Some magical params from facebook denoiser
+facebook_denoiser:
+  segment: 4
+
+device: "cuda"
 
 asr: 
   _target_: dasr.asr.wav2vec.Wav2VecEnv
@@ -29,32 +19,16 @@ asr:
   loss_type: "ctc"
   # baseline: 0.25
 
-data:
-  _target_: dasr.datasets.make_dataloaders.make_loaders
-  common_voice:
-    _target_: dasr.datasets.common_voice.get_common_voice
-    name: "mozilla-foundation/common_voice_11_0"
-    language: "ru"
-    train_split: "train[0:3000]"
-    test_split: "test[0:200]"
-    removavle_cols: ["accent", "age", "client_id", "down_votes", "gender", "locale", "path", "segment", "up_votes"]
-    sampling_rate: 16000
-  batch_size: 2
-  desire_snr_db: 10
-  max_length: False
-
 train:
   optimizer:
-    # _target_: dasr.optimizers.lion.Lion
     _target_: torch.optim.Adam
-    # _target_: torch.optim.SGD
-    # lr: 0.00005
-    lr: 0.0003
+    learning_rate: 0.0003
   trainer: 
     _target_: dasr.train.trainer.Trainer
   n_epoch: 1000
+  use_asr_loss: True
+  use_geom_loss: True
   n_epoch_before_asr_loss: 0
-  only_asr_loss: True
   asr_loss_coef: 0.2
    
 loss: 
@@ -66,15 +40,27 @@ loss:
 
 wandb:
   _target_: dasr.logger.wandb_logger.WandbLogger
-  project_name: "dasr1"
+  project_name: "dasr"
   # run_name: "wav2vec+pretrained_dns64 (freeze encoder), SNR=10, train[0:3000], reinforce baseline=0.25"
   run_name: "wav2vec+pretrained_dns64 [lr=3e-4] (freeze encoder), SNR=10, train[0:3000] CTC"
   # run_name: "[sanity-check] wav2vec, SNR=10, train[0:2] only CTC, simple_denoiser_lstm"
 
-  
-
-# Some magical params from facebook denoiser
-facebook_denoiser:
-  segment: 4
-
-device: "cuda"
+data:
+  _target_: dasr.train.pl_data.DASRDataModule
+  batch_size: 4
+  collate_class: 
+    _target_: dasr.datasets.make_dataloaders.CollateWithPadd
+  train_dataset:
+    _target_: dasr.datasets.random_noise.RandomNoiseSNR
+    desire_snr_db: 10
+    max_length: False
+    common_voice_subset: 
+      _target_: dasr.datasets.common_voice.get_common_voice_subset
+      split: "train[0:3000]"
+  val_dataset:
+    _target_: dasr.datasets.random_noise.RandomNoiseSNR
+    desire_snr_db: 10
+    max_length: False
+    common_voice_subset: 
+      _target_: dasr.datasets.common_voice.get_common_voice_subset
+      split: "test[0:200]"
