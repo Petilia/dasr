@@ -23,7 +23,7 @@ class Wav2VecEnv(BaseASRModel):
         self.processor = Wav2Vec2Processor.from_pretrained(path_model)
         self.model = Wav2Vec2ForCTC.from_pretrained(path_model)
 
-        self.model = self.model.to(device)
+        self.model.to(device)
         self.model.eval()
         self.freeze_model()
 
