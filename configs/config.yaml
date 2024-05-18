@@ -13,11 +13,8 @@ device: "cuda"
 
 asr: 
   _target_: dasr.asr.wav2vec.Wav2VecEnv
-  device: "cuda"
   path_model: "jonatasgrosman/wav2vec2-large-xlsr-53-russian"
-  asr_metric: "cer"
-  loss_type: "ctc"
-  # baseline: 0.25
+
 
 train:
   optimizer:
@@ -25,11 +22,11 @@ train:
     learning_rate: 0.0003
   trainer: 
     _target_: dasr.train.trainer.Trainer
-  n_epoch: 1000
+  n_epoch: 200
   use_asr_loss: True
   use_geom_loss: True
   n_epoch_before_asr_loss: 0
-  asr_loss_coef: 0.2
+  asr_loss_coef: 1
    
 loss: 
   _target_: dasr.losses.loss_factory.AdditiveLoss
@@ -42,12 +39,12 @@ wandb:
   _target_: dasr.logger.wandb_logger.WandbLogger
   project_name: "dasr-avito"
   # run_name: "wav2vec+pretrained_dns64 (freeze encoder), SNR=10, train[0:3000], reinforce baseline=0.25"
-  run_name: "wav2vec+pretrained_dns64 [lr=3e-4] (freeze encoder), SNR=10, train[0:3000] CTC"
+  run_name: "wav2vec+pretrained_dns64 [lr=3e-4] (freeze encoder), SNR=10, train[0:20000] CTC"
   # run_name: "[sanity-check] wav2vec, SNR=10, train[0:2] only CTC, simple_denoiser_lstm"
 
 data:
   _target_: dasr.train.pl_data.DASRDataModule
-  batch_size: 4
+  batch_size: 16
   collate_class: 
     _target_: dasr.datasets.make_dataloaders.CollateWithPadd
   train_dataset:
@@ -56,11 +53,11 @@ data:
     max_length: False
     common_voice_subset: 
       _target_: dasr.datasets.common_voice.get_common_voice_subset
-      split: "train[0:3000]"
+      split: "train[0:20000]"
   val_dataset:
     _target_: dasr.datasets.random_noise.RandomNoiseSNR
     desire_snr_db: 10
     max_length: False
     common_voice_subset: 
       _target_: dasr.datasets.common_voice.get_common_voice_subset
-      split: "test[0:200]"
+      split: "test"

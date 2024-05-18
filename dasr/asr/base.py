@@ -13,6 +13,7 @@ class BaseASRModel:
     """
 
     def __init__(self) -> None:
+        super().__init__()
         self.wer = TruncatedWER()
         self.cer = TruncatedCER()
 
@@ -48,8 +49,6 @@ class BaseASRModel:
     def get_stats(
         self,
         loss: Tensor,
-        reward: Tensor,
-        logprob: Tensor,
         reference_transcript: List[str],
         denoisy_transcript: List[str],
         noisy_transcript: List[str] = None,
@@ -57,20 +56,9 @@ class BaseASRModel:
     ):
         stats = {}
         stats["asr_loss"] = loss.item()
-        if reward is not None:
-            stats["reward"] = reward.mean().item()
-        if logprob is not None:
-            stats["logprob"] = logprob.mean().item()
         if gt_transcript:
             gt_transcript = [self.normalize_text(i) for i in gt_transcript]
-        # metrics between reference and denoisy transcript (reference = clean audio through asr)
-        stats["wer (ref-denoisy)"] = self.wer(
-            target=reference_transcript, preds=denoisy_transcript
-        ).item()
-        stats["cer (ref-denoisy)"] = self.cer(
-            target=reference_transcript, preds=denoisy_transcript
-        ).item()
-        # metrics between GT and reference
+        # metrics between GT and reference (reference = clean audio through asr)
         if gt_transcript:
             stats["wer (gt-ref)"] = self.wer(
                 target=gt_transcript, preds=reference_transcript

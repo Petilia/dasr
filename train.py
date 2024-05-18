@@ -1,5 +1,6 @@
 import os
 
+import torch
 import hydra
 from omegaconf import DictConfig
 
@@ -16,6 +17,8 @@ from dasr.train.pl_model import DASRModel
 def main(cfg: DictConfig):
     print(cfg)
 
+    torch.set_float32_matmul_precision('medium')
+
     dm = DASRDataModule(cfg)
     dasr = DASRModel(cfg)
 
@@ -26,7 +29,7 @@ def main(cfg: DictConfig):
         ),
     ]
 
-    trainer = pl.Trainer(accelerator="cuda", logger=loggers)
+    trainer = pl.Trainer(accelerator="cuda", logger=loggers, log_every_n_steps=15)
     trainer.fit(model=dasr, datamodule=dm)
 
 
