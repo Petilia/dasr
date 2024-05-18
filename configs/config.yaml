@@ -40,7 +40,7 @@ loss:
 
 wandb:
   _target_: dasr.logger.wandb_logger.WandbLogger
-  project_name: "dasr"
+  project_name: "dasr-avito"
   # run_name: "wav2vec+pretrained_dns64 (freeze encoder), SNR=10, train[0:3000], reinforce baseline=0.25"
   run_name: "wav2vec+pretrained_dns64 [lr=3e-4] (freeze encoder), SNR=10, train[0:3000] CTC"
   # run_name: "[sanity-check] wav2vec, SNR=10, train[0:2] only CTC, simple_denoiser_lstm"
