@@ -15,7 +15,6 @@ asr:
   _target_: dasr.asr.wav2vec.Wav2VecEnv
   path_model: "jonatasgrosman/wav2vec2-large-xlsr-53-russian"
 
-
 train:
   optimizer:
     _target_: torch.optim.Adam
@@ -24,9 +23,13 @@ train:
     _target_: dasr.train.trainer.Trainer
   n_epoch: 200
   use_asr_loss: True
-  use_geom_loss: True
+  use_geom_loss: False
   n_epoch_before_asr_loss: 0
   asr_loss_coef: 1
+  accelerator: cuda
+  gradient_clip_val: 10
+  precision: 16-mixed
+  log_every_n_steps: 50
    
 loss: 
   _target_: dasr.losses.loss_factory.AdditiveLoss
@@ -34,13 +37,6 @@ loss:
   use_sfft_loss: True
   factor_sc: 0.5
   factor_mag: 0.5
-
-wandb:
-  _target_: dasr.logger.wandb_logger.WandbLogger
-  project_name: "dasr-avito"
-  # run_name: "wav2vec+pretrained_dns64 (freeze encoder), SNR=10, train[0:3000], reinforce baseline=0.25"
-  run_name: "wav2vec+pretrained_dns64 [lr=3e-4] (freeze encoder), SNR=10, train[0:20000] CTC"
-  # run_name: "[sanity-check] wav2vec, SNR=10, train[0:2] only CTC, simple_denoiser_lstm"
 
 data:
   _target_: dasr.train.pl_data.DASRDataModule
@@ -61,3 +57,22 @@ data:
     common_voice_subset: 
       _target_: dasr.datasets.common_voice.get_common_voice_subset
       split: "test"
+
+
+wandb:
+  _target_: dasr.logger.wandb_logger.WandbLogger
+  project_name: "dasr-avito"
+  # run_name: "wav2vec+pretrained_dns64 (freeze encoder), SNR=10, train[0:3000], reinforce baseline=0.25"
+  run_name: "[only ctc] wav2vec+pretrained_dns64 [lr=3e-4] (freeze encoder), SNR=10, train[0:20000]"
+  # run_name: "[sanity-check] wav2vec, SNR=10, train[0:2] only CTC, simple_denoiser_lstm"
+
+
+artifacts:
+  checkpoint:
+    use: true
+    dirpath: checkpoints
+    filename: "{epoch:02d}"
+    monitor: val/asr_loss
+    mode: min
+    save_top_k: 3
+    every_n_epochs: 1

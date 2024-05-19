@@ -3,6 +3,7 @@ import os
 import torch
 import hydra
 from omegaconf import DictConfig
+from pathlib import Path
 
 os.environ["HYDRA_FULL_ERROR"] = "1"
 os.environ["NUMBA_CACHE_DIR"] = "/tmp/"
@@ -29,7 +30,39 @@ def main(cfg: DictConfig):
         ),
     ]
 
-    trainer = pl.Trainer(accelerator="cuda", logger=loggers, log_every_n_steps=15)
+
+    callbacks = [
+        pl.callbacks.LearningRateMonitor(logging_interval="step"),
+        pl.callbacks.DeviceStatsMonitor(),
+        pl.callbacks.RichModelSummary(
+            max_depth=1
+        ),
+    ]
+
+    if cfg.artifacts.checkpoint.use:
+        checkpoint_callback = pl.callbacks.ModelCheckpoint(
+            dirpath=Path(cfg.artifacts.checkpoint.dirpath)
+            / cfg.wandb.run_name,
+            filename=cfg.artifacts.checkpoint.filename,
+            monitor=cfg.artifacts.checkpoint.monitor,
+            mode=cfg.artifacts.checkpoint.mode,
+            save_top_k=cfg.artifacts.checkpoint.save_top_k,
+            every_n_epochs=cfg.artifacts.checkpoint.every_n_epochs,
+            verbose=True,
+        )
+
+        callbacks.append(checkpoint_callback)
+
+
+    trainer = pl.Trainer(accelerator=cfg.train.accelerator, 
+                         log_every_n_steps=cfg.train.log_every_n_steps, 
+                         gradient_clip_val=cfg.train.gradient_clip_val,
+                         precision=cfg.train.precision,
+                         enable_checkpointing=cfg.artifacts.checkpoint.use,
+                         callbacks=callbacks,
+                         logger=loggers, 
+                         )
+    
     trainer.fit(model=dasr, datamodule=dm)
 
 

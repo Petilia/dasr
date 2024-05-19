@@ -50,6 +50,8 @@ RUN apt-get update && apt-get install -y tmux zsh
 
 RUN pip install pytorch-lightning==2.1.0
 
+RUN pip install -U rich
+
 
 #### ADD USER WITH DEFAULT PW
 ARG USER=docker_current
