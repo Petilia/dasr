@@ -12,15 +12,20 @@ from ..metrics import TruncatedCER, TruncatedWER
 class Wav2VecEnv(torch.nn.Module):
     def __init__(
         self,
-        path_model
+        path_model,
+        freeze_all=True
     ):
         super().__init__()
         self.processor = Wav2Vec2Processor.from_pretrained(path_model)
         self.model = Wav2Vec2ForCTC.from_pretrained(path_model)
 
-        self.model.eval()
-        self.freeze_model()
-        self.model.freeze_feature_extractor()
+        if freeze_all:
+            self.model.eval()
+            self.freeze_model()
+            self.model.freeze_feature_extractor()
+        else:
+            self.model.freeze_feature_extractor()
+
 
         self.wer = TruncatedWER()
         self.cer = TruncatedCER()
