@@ -55,6 +55,7 @@ def main(cfg: DictConfig):
 
 
     trainer = pl.Trainer(accelerator=cfg.train.accelerator, 
+                         devices=cfg.train.devices, 
                          log_every_n_steps=cfg.train.log_every_n_steps, 
                          gradient_clip_val=cfg.train.gradient_clip_val,
                          precision=cfg.train.precision,

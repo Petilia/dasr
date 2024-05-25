@@ -12,7 +12,6 @@ class DASRModel(pl.LightningModule):
         self.cfg = cfg
         
         self.asr = instantiate(cfg.asr)
-        # self.asr.model.to(self.device)
 
         self.model = instantiate(cfg.denoiser)
 
@@ -38,6 +37,7 @@ class DASRModel(pl.LightningModule):
         # forward through asr
         attention_mask = batch["noise_attention_masks"]
         gt_transcript = batch["transcriptions"]
+        
         asr_output = self.asr.forward(denoisy_speech, attention_mask, gt_transcript)
 
         return asr_output, denoisy_speech
@@ -88,29 +88,30 @@ class DASRModel(pl.LightningModule):
         # attention_mask = batch["noise_attention_masks"]
         attention_mask = None
 
-        if self.use_geom_loss:
-            geom_loss, geom_loss_stats = self.geom_loss(clear, denoisy_speech)
-            geom_loss_stats = {
-                f"val/{key}": value for key, value in geom_loss_stats.items()
-            }
-            self.log_dict(geom_loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        else:
-            geom_loss = 0
+        # if self.use_geom_loss:
+        # На валидации смотрим на оба лосса без if-ов
+        geom_loss, geom_loss_stats = self.geom_loss(clear, denoisy_speech)
+        geom_loss_stats = {
+            f"val/{key}": value for key, value in geom_loss_stats.items()
+        }
+        self.log_dict(geom_loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        # else:
+        #     geom_loss = 0
 
-        if self.use_asr_loss and self.current_epoch >= self.n_epoch_before_asr_loss:
-            asr_loss, asr_loss_stats = self.asr.get_loss(
-                asr_output,
-                clear,
-                attention_mask=attention_mask,
-                noisy_speech=noisy,
-                gt_transcript=gt_transcript,
-            )
-            asr_loss_stats = {
-                f"val/{key}": value for key, value in asr_loss_stats.items()
-            }
-            self.log_dict(asr_loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
-        else:
-            asr_loss = 0
+        # if self.use_asr_loss and self.current_epoch >= self.n_epoch_before_asr_loss:
+        asr_loss, asr_loss_stats = self.asr.get_loss(
+            asr_output,
+            clear,
+            attention_mask=attention_mask,
+            noisy_speech=noisy,
+            gt_transcript=gt_transcript,
+        )
+        asr_loss_stats = {
+            f"val/{key}": value for key, value in asr_loss_stats.items()
+        }
+        self.log_dict(asr_loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        # else:
+        #     asr_loss = 0
 
         loss = geom_loss + self.asr_loss_coef * asr_loss
 
