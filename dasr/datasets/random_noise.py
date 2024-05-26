@@ -7,12 +7,12 @@ class RandomNoiseSNR(Dataset):
     Dataset that add random noise to common voice
     """
 
-    def __init__(self, common_voice_subset, desire_snr_db=10, max_length=False):
+    def __init__(self, common_voice_subset, desire_snr_range_db=[10, 20], max_length=False):
         super().__init__()
         self.audio = common_voice_subset["audio"]
         self.transcriptions = common_voice_subset["sentence"]
         self.max_length = max_length
-        self.desire_snr_db = desire_snr_db
+        self.desire_snr_range_db = desire_snr_range_db
 
     def __len__(self):
         return len(self.audio)
@@ -23,14 +23,16 @@ class RandomNoiseSNR(Dataset):
         clean_audio = torch.Tensor(clean_audio)
         if self.max_length:
             clean_audio = clean_audio[0 : int(self.max_length)]
-        noise_audio = self.noising(clean_audio, desire_snr_db=self.desire_snr_db)
+        noise_audio = self.noising(clean_audio, desire_snr_range_db=self.desire_snr_range_db)
         data["clean_audio"] = clean_audio
         data["noise_audio"] = noise_audio
         data["transcription"] = self.transcriptions[idx]
         return data
 
-    def noising(self, wav, desire_snr_db):
-        desire_snr_db = torch.Tensor([desire_snr_db])
+    def noising(self, wav, desire_snr_range_db):
+        # сэмплим SNR из нашего диапазона
+        desire_snr_db = torch.empty(1).uniform_(desire_snr_range_db[0], desire_snr_range_db[1])
+
         noise_samples = torch.randn(wav.shape)
         power_noise, power_wav = self.get_power(noise_samples), self.get_power(wav)
 

@@ -1,7 +1,7 @@
 denoiser:
   _target_: dasr.models.facebook_denoiser.get_pretrained_model
   name: "dns64"
-  freeze_encoder: True
+  freeze_encoder: False
   freeze_lstm: False
   freeze_decoder: False
 
@@ -47,14 +47,14 @@ data:
     _target_: dasr.datasets.make_dataloaders.CollateWithPadd
   train_dataset:
     _target_: dasr.datasets.random_noise.RandomNoiseSNR
-    desire_snr_db: 10
+    desire_snr_range_db: [8, 20]
     max_length: False
     common_voice_subset: 
       _target_: dasr.datasets.common_voice.get_common_voice_subset
       split: "train[0:20000]"
   val_dataset:
     _target_: dasr.datasets.random_noise.RandomNoiseSNR
-    desire_snr_db: 10
+    desire_snr_range_db: [10, 10]  # возможно как раз на валидации надо фиксировать SNR
     max_length: False
     common_voice_subset: 
       _target_: dasr.datasets.common_voice.get_common_voice_subset
@@ -64,9 +64,8 @@ data:
 wandb:
   _target_: dasr.logger.wandb_logger.WandbLogger
   project_name: "dasr-avito"
-  # run_name: "wav2vec+pretrained_dns64 (freeze encoder), SNR=10, train[0:3000], reinforce baseline=0.25"
-  run_name: "[ctc+sfft(0.01)] wav2vec+pretrained_dns64 [lr=1e-4] (freeze encoder), SNR=10, train[0:20000]"
-  # run_name: "[sanity-check] wav2vec, SNR=10, train[0:2] only CTC, simple_denoiser_lstm"
+  # run_name: "[only ctc] wav2vec+pretrained_dns64 [lr=1e-4] (unfreeze), SNR in [10, 20], train[0:20000]"
+  run_name: "[ctc+sfft(0.01)] wav2vec+pretrained_dns64 [lr=1e-4] (unfreeze), SNR in [8, 20], train[0:20000]"
 
 
 artifacts:
