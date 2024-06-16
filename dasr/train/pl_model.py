@@ -56,7 +56,7 @@ class DASRModel(pl.LightningModule):
             geom_loss_stats = {
                 f"train/{key}": value for key, value in geom_loss_stats.items()
             }
-            self.log_dict(geom_loss_stats, on_step=True, on_epoch=False, prog_bar=True, sync_dist=True)
+            self.log_dict(geom_loss_stats, on_step=True, on_epoch=False, prog_bar=True, sync_dist=True, batch_size=len(batch["transcriptions"]))
         else:
             geom_loss = 0
 
@@ -71,7 +71,7 @@ class DASRModel(pl.LightningModule):
             asr_loss_stats = {
                 f"train/{key}": value for key, value in asr_loss_stats.items()
             }
-            self.log_dict(asr_loss_stats, on_step=True, on_epoch=False, prog_bar=True, sync_dist=True)
+            self.log_dict(asr_loss_stats, on_step=True, on_epoch=False, prog_bar=True, sync_dist=True, batch_size=len(batch["transcriptions"]))
         else:
             asr_loss = 0
 
@@ -94,7 +94,7 @@ class DASRModel(pl.LightningModule):
         geom_loss_stats = {
             f"val/{key}": value for key, value in geom_loss_stats.items()
         }
-        self.log_dict(geom_loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log_dict(geom_loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=len(batch["transcriptions"]))
         # else:
         #     geom_loss = 0
 
@@ -109,7 +109,7 @@ class DASRModel(pl.LightningModule):
         asr_loss_stats = {
             f"val/{key}": value for key, value in asr_loss_stats.items()
         }
-        self.log_dict(asr_loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log_dict(asr_loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=len(batch["transcriptions"]))
         # else:
         #     asr_loss = 0
 

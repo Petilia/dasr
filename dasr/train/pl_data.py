@@ -24,7 +24,7 @@ class DASRDataModule(pl.LightningDataModule):
         # Здесь взять self.train_dataset и пильнуть dataloader
         return DataLoader(
             self.train_dataset,
-            batch_size=self.cfg.data.batch_size,
+            batch_size=self.cfg.data.train_batch_size,
             collate_fn=self.collate_fn,
             shuffle=True,
             num_workers=5,
@@ -33,7 +33,7 @@ class DASRDataModule(pl.LightningDataModule):
     def val_dataloader(self):
         return DataLoader(
             self.val_dataset,
-            batch_size=self.cfg.data.batch_size,
+            batch_size=self.cfg.data.val_batch_size,
             collate_fn=self.collate_fn,
             shuffle=False,
             num_workers=5,

@@ -44,7 +44,7 @@ class ASRModel(pl.LightningModule):
         loss_stats = {
             f"train/{key}": value for key, value in loss_stats.items()
         }
-        self.log_dict(loss_stats, on_step=True, on_epoch=False, prog_bar=True, sync_dist=True)
+        self.log_dict(loss_stats, on_step=True, on_epoch=False, prog_bar=True, sync_dist=True, batch_size=len(batch["transcriptions"]))
       
         return {"loss": loss}
 
@@ -67,7 +67,7 @@ class ASRModel(pl.LightningModule):
         loss_stats = {
             f"val/{key}": value for key, value in loss_stats.items()
         }
-        self.log_dict(loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True)
+        self.log_dict(loss_stats, on_step=False, on_epoch=True, prog_bar=True, sync_dist=True, batch_size=len(batch["transcriptions"]))
 
 
     def configure_optimizers(self) -> Any:

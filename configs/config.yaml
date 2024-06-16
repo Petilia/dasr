@@ -1,6 +1,7 @@
 denoiser:
   _target_: dasr.models.facebook_denoiser.get_pretrained_model
   name: "dns64"
+  pretrained_weights: True
   freeze_encoder: False
   freeze_lstm: False
   freeze_decoder: False
@@ -14,6 +15,7 @@ device: "cuda"
 asr: 
   _target_: dasr.asr.wav2vec.Wav2VecEnv
   path_model: "jonatasgrosman/wav2vec2-large-xlsr-53-russian"
+  # path_model: "jonatasgrosman/wav2vec2-large-xlsr-53-english"
   freeze_all: True
 
 train:
@@ -24,11 +26,11 @@ train:
     _target_: dasr.train.trainer.Trainer
   n_epoch: 200
   use_asr_loss: True
-  use_geom_loss: True
+  use_geom_loss: False
   n_epoch_before_asr_loss: 0
   asr_loss_coef: 1
   accelerator: cuda
-  devices: [0, 1]
+  devices: [2, 3]
   gradient_clip_val: 10
   precision: 16-mixed
   log_every_n_steps: 50
@@ -42,16 +44,19 @@ loss:
 
 data:
   _target_: dasr.train.pl_data.DASRDataModule
-  batch_size: 24
+  train_batch_size: 16
+  val_batch_size: 16
   collate_class: 
     _target_: dasr.datasets.make_dataloaders.CollateWithPadd
   train_dataset:
     _target_: dasr.datasets.random_noise.RandomNoiseSNR
-    desire_snr_range_db: [8, 20]
+    desire_snr_range_db: [5, 25]
     max_length: False
     common_voice_subset: 
       _target_: dasr.datasets.common_voice.get_common_voice_subset
       split: "train[0:20000]"
+      language: "ru"
+      # language: "en"
   val_dataset:
     _target_: dasr.datasets.random_noise.RandomNoiseSNR
     desire_snr_range_db: [10, 10]  # возможно как раз на валидации надо фиксировать SNR
@@ -59,13 +64,16 @@ data:
     common_voice_subset: 
       _target_: dasr.datasets.common_voice.get_common_voice_subset
       split: "test"
+      language: "ru"
+      # split: "test[0:5000]"
+      # language: "en"
 
 
 wandb:
   _target_: dasr.logger.wandb_logger.WandbLogger
   project_name: "dasr-avito"
-  # run_name: "[only ctc] wav2vec+pretrained_dns64 [lr=1e-4] (unfreeze), SNR in [10, 20], train[0:20000]"
-  run_name: "[ctc+sfft(0.01)] wav2vec+pretrained_dns64 [lr=1e-4] (unfreeze), SNR in [8, 20], train[0:20000]"
+  run_name: "RU [only ctc] wav2vec+pretrained_dns64 [lr=1e-4] (unfreeze), SNR in [5, 25], train[0:20000]"
+  # run_name: "EN [ct+sfft(0.01)] wav2vec2+pretrained_dns64 [lr=1e-4] (freeze encoder), SNR in [10, 10], train[0:20000]"
 
 
 artifacts:
@@ -73,7 +81,8 @@ artifacts:
     use: true
     dirpath: checkpoints
     filename: "{epoch:02d}"
-    monitor: val/asr_loss
+    # monitor: val/asr_loss
+    monitor: val/wer (gt-denoisy)
     mode: min
     save_top_k: 3
     every_n_epochs: 1
