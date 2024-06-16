@@ -1,14 +1,18 @@
 from denoiser import pretrained
 
-def get_pretrained_model(name, freeze_encoder=False,  freeze_lstm=False, freeze_decoder=False):
+def get_pretrained_model(name,
+                         pretrained_weights=True, 
+                         freeze_encoder=False,
+                         freeze_lstm=False,
+                         freeze_decoder=False):
     if name == "dns48":
-        model = pretrained.dns48()
+        model = pretrained.dns48(pretrained=pretrained_weights)
     elif name == "dns64":
-        model = pretrained.dns64()
+        model = pretrained.dns64(pretrained=pretrained_weights)
     elif name == "master64":
-        model = pretrained.master64()
+        model = pretrained.master64(pretrained=pretrained_weights)
     elif name == "valentini_nc":    
-        model = pretrained.valentini_nc()
+        model = pretrained.valentini_nc(pretrained=pretrained_weights)
     else:
         raise ValueError("Unknown model name")
     
